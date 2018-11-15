@@ -27,7 +27,7 @@ public class JavaEventHandler implements EventActionHandler {
 	List<String> docsAllowed = new ArrayList();
 
 	public JavaEventHandler() {
-		docsAllowed.addAll(Arrays.asList(bundle.getString("formatAllowed").split(";")));
+		docsAllowed.addAll(Arrays.asList(bundle.getString("formatAllowed").toLowerCase().split(";")));
 	}
 
 	public void onEvent(ObjectChangeEvent event, Id subId) {
@@ -48,18 +48,9 @@ public class JavaEventHandler implements EventActionHandler {
 				ContentTransfer ce = (ContentTransfer) celist.get(0);
 				String fname = ce.get_RetrievalName();
 				System.out.println("Object name" + fname);
-				boolean toDelete = false;
-				for (String mime : docsAllowed) {
-					if (fname.indexOf(mime) > 0) {
-						toDelete = true;
-					}
-				}
-				if (!toDelete) {
-					toDelete = validateContentFile(ce.get_RetrievalName(), ce.accessContentStream());
-				}
+				boolean toDelete = toRemove(ce.accessContentStream(), fname);
 
 				if (toDelete) {
-					System.out.println("log file created.. to delete..");
 					doc.delete();
 					doc.save(RefreshMode.NO_REFRESH);
 					System.out.println("Document deleted successfully");
@@ -81,6 +72,25 @@ public class JavaEventHandler implements EventActionHandler {
 		}
 	}
 
+	private boolean toRemove(InputStream accessContentStream, String fname) {
+		System.out.println("#######################################");
+		System.out.println("Validating..."+fname);
+		boolean toDelete=true;
+		boolean allowed=false;
+		for (String mime : docsAllowed) {
+			if (fname.toLowerCase().indexOf(mime) > 0) {
+				allowed = true;
+			}
+		}
+		if (allowed) {
+			toDelete = validateContentFile(fname, accessContentStream);
+		}else {
+			System.out.println("File Type not allowed, files types allowed ("+docsAllowed+")..."+fname);
+		}
+		System.out.println("Done validation..."+fname);
+		return toDelete;
+	}
+
 	private boolean validateContentFile(String retrievalName, InputStream accessContentStream) {
 		boolean isValid=false;
 		BufferedReader fileReader = new BufferedReader(new InputStreamReader(accessContentStream));
@@ -93,24 +103,24 @@ public class JavaEventHandler implements EventActionHandler {
 			//jpg file using  http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
 			if(retrievalName.toLowerCase().endsWith(".pdf") ) {
 				if(line.indexOf("%PDF-")==0 ) {
-					System.out.println("Is a valid pdf!");
+					System.out.println("it is a valid pdf!");
 					isValid=true;
 				}else{
-					System.out.println("WARNING..... THIS IS NOT A VALID PDF FILE!!!, "+retrievalName);
+					System.out.println("WARNING..... THIS IS NOT A VALID FILE!!!, "+retrievalName);
 				}	
 			} else if(retrievalName.toLowerCase().endsWith(".tif") ) {
 				if(line.indexOf("II")==0 || line.indexOf("MM")==0 ) {
-					System.out.println("Is a valid tif!");
+					System.out.println("it is a valid tif!");
 					isValid=true;
 				}else{
-					System.out.println("WARNING..... THIS IS NOT A VALID PDF TIF!!!, "+retrievalName);
+					System.out.println("WARNING..... THIS IS NOT A VALID TIF!!!, "+retrievalName);
 				}
 			} else if(retrievalName.toLowerCase().endsWith(".jpg") ) {
 				if(line.indexOf("ÿØÿà")==0 ) {
-					System.out.println("Is a valid jpg!");
+					System.out.println("it is a valid jpg!");
 					isValid=true;
 				}else{
-					System.out.println("WARNING..... THIS IS NOT A VALID PDF JPG!!!, "+retrievalName);
+					System.out.println("WARNING..... THIS IS NOT A VALID JPG!!!, "+retrievalName);
 				}
 			}
 			
@@ -135,8 +145,8 @@ public class JavaEventHandler implements EventActionHandler {
 		String []ls=new File(folder).list();
 		for (int i = 0; i < ls.length; i++) {
 			String string = ls[i];
-			boolean v=ev.validateContentFile(string, new FileInputStream(folder+string));
-			System.out.println(string +" -- valida?"+v);
+			boolean v=ev.toRemove(new FileInputStream(folder+string), string);
+			System.out.println(string +" -- must remove?"+v);
 		}
 		
 	}
